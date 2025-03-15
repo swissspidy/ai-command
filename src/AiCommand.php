@@ -122,6 +122,27 @@ class AiCommand extends WP_CLI_Command {
 				},
 			]
 		);
+
+		$server->register_tool(
+			[
+				'name'        => 'flush_object_cache',
+				'description' => 'Flushes the WordPress object cache, removing all cached objects.',
+				'inputSchema' => [
+					'type'       => 'object',
+					'properties' => [
+						'enable' => [
+							'type'        => 'boolean',
+							'description' => 'True to enable maintenance mode, false to disable it.',
+						],
+					],
+					'required'   => [],
+				],
+				'callable'    => function ( $params ) {
+					$result = wp_cache_flush();
+					return $result ? 'Object cache successfully flushed' : 'Failed to flush object cache';
+				},
+			]
+		);
 	}
 
 	// Register resources for AI access
