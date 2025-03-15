@@ -43,7 +43,19 @@ class AiCommand extends WP_CLI_Command {
 	 */
 	public function __invoke( $args, $assoc_args ) {
 		$server = new MCP\Server();
+		$client = new MCP\Client($server);
 
+		$this->register_tools($server, $client);
+
+		$this->register_resources($server);
+
+		$result = $client->call_ai_service_with_prompt( $args[0] );
+
+		WP_CLI::success( $result );
+	}
+
+	// Register tools for AI processing
+	private function register_tools($server, $client) {
 		$server->register_tool(
 			[
 				'name'        => 'calculate_total',
@@ -90,29 +102,6 @@ class AiCommand extends WP_CLI_Command {
 				},
 			]
 		);
-
-		// Register resources:
-		$server->register_resource(
-			[
-				'name'        => 'users',
-				'uri'         => 'data://users',
-				'description' => 'List of users',
-				'mimeType'    => 'application/json',
-				'dataKey'     => 'users', // This tells getResourceData() to look in the $data array
-			]
-		);
-
-		$server->register_resource(
-			[
-				'name'        => 'product_catalog',
-				'uri'         => 'file://./products.json',
-				'description' => 'Product catalog',
-				'mimeType'    => 'application/json',
-				'filePath'    => './products.json', // This tells getResourceData() to read from a file
-			]
-		);
-
-		$client = new MCP\Client( $server );
 
 		$server->register_tool(
 			[
@@ -170,9 +159,26 @@ class AiCommand extends WP_CLI_Command {
 				},
 			]
 		);
+	}
 
-		$result = $client->call_ai_service_with_prompt( $args[0] );
+	// Register resources for AI access
+	private function register_resources($server) {
+		// Register Users resource
+		$server->register_resource([
+				'name'        => 'users',
+				'uri'         => 'data://users',
+				'description' => 'List of users',
+				'mimeType'    => 'application/json',
+				'dataKey'     => 'users', // Data will be fetched from 'users'
+		]);
 
-		WP_CLI::success( $result );
+		// Register Product Catalog resource
+		$server->register_resource([
+				'name'        => 'product_catalog',
+				'uri'         => 'file://./products.json',
+				'description' => 'Product catalog',
+				'mimeType'    => 'application/json',
+				'filePath'    => './products.json', // Data will be fetched from products.json
+		]);
 	}
 }
