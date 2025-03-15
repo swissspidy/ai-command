@@ -166,6 +166,7 @@ class Server {
 	private function list_resources() {
 		$result = [];
 		foreach ( $this->resources as $resource ) {
+			WPCLI::log($resource);
 			$result[] = [
 				'uri'         => $resource['uri'],
 				'name'        => $resource['name'],
@@ -177,7 +178,7 @@ class Server {
 		return $result;
 	}
 
-	private function read_resource( $uri ) {
+	public function read_resource( $uri ) {
 		// Find the resource by URI
 		$resource = null;
 		foreach ( $this->resources as $r ) {
@@ -204,9 +205,16 @@ class Server {
 		];
 	}
 
-	private function get_resource_data( $mcp_resource ) {
+	public function get_resource_data( $mcp_resource ) {
 		// Replace this with your actual logic to access the resource data
 		// based on the resource definition.
+
+
+		// return the resource element based on the path
+		if(str_starts_with($mcp_resource, 'media://')) {
+			return $this->get_media_data($mcp_resource);
+		}
+
 
 		// Example: If the resource is a file, read the file contents.
 		if ( isset( $mcp_resource['filePath'] ) ) {
@@ -221,6 +229,16 @@ class Server {
 		//... other data access logic...
 
 		throw new Exception( 'Unable to access resource data.' );
+	}
+
+
+	private function get_media_data($mcp_resource) {
+		foreach($this->resources as $resource) {
+			if($resource['uri'] === $mcp_resource) {
+					$callback_response = $resource['callable']();
+					return $callback_response;
+			}
+		}
 	}
 
 	// TODO: use a dedicated JSON schema validator library

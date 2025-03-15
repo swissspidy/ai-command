@@ -127,6 +127,106 @@ class Client {
 		return $image_url;
 	}
 
+
+	public function modify_image_from_ai_service( string $prompt, $image_data ) {
+
+		add_filter(
+			'map_meta_cap',
+			static function () {
+				return [ 'exist' ];
+			}
+		);
+
+		try {
+			$service    = ai_services()->get_available_service(
+				[
+					'capabilities' => [
+						AI_Capability::MULTIMODAL_INPUT,
+					],
+				]
+			);
+
+			$parts = new Parts();
+
+			// Add the image data
+			if (is_string($image_data) && file_exists($image_data)) {
+					// If image_data is a file path
+					$mime_type = mime_content_type($image_data);
+					$image_content = file_get_contents($image_data);
+					$base64_image = base64_encode($image_content);
+					$data_url = 'data:' . $mime_type . ';base64,' . $base64_image;
+					$parts->add_inline_data_part($data_url, $mime_type);
+			} elseif (is_string($image_data) && strpos($image_data, 'data:') === 0) {
+					// If image_data is already a data URL
+					$mime_type = explode(';', explode(':', $image_data)[1])[0];
+					$parts->add_inline_data_part($image_data, $mime_type);
+			} elseif (is_object($image_data) && method_exists($image_data, 'get_binary_data')) {
+					// If image_data is a Blob object
+					$mime_type = 'image/png'; // Default, adjust if needed
+					$binary_data = $image_data->get_binary_data();
+					$base64_image = base64_encode($binary_data);
+					$data_url = 'data:' . $mime_type . ';base64,' . $base64_image;
+					$parts->add_inline_data_part($data_url, $mime_type);
+			} else {
+							throw new Exception('Invalid image data format');
+			}
+
+			// Create content with the parts
+			$content = new Content(Content_Role::USER, $parts);
+
+			$parts->add_text_part($prompt);
+
+
+			$candidates = $service
+				->get_model(
+					[
+						'feature'      => 'image-generation',
+
+					]
+				)
+				->generate_image( "$prompt image blob $image_blob" );
+
+				$model = 'gemini-2.0-flash';
+
+		} catch ( Exception $e ) {
+			WP_CLI::error( $e->getMessage() );
+		}
+
+		$image_url = '';
+		foreach ( $candidates->get( 0 )->get_content()->get_parts() as $part ) {
+			if ( $part instanceof Inline_Data_Part ) {
+				$image_url  = $part->get_base64_data(); // Data URL.
+				$image_blob = Helpers::base64_data_url_to_blob( $image_url );
+
+				if ( $image_blob ) {
+					$filename  = tempnam( '/tmp', 'ai-generated-image' );
+					$parts     = explode( '/', $part->get_mime_type() );
+					$extension = $parts[1];
+					rename( $filename, $filename . '.' . $extension );
+					$filename .= '.' . $extension;
+
+					file_put_contents( $filename, $image_blob->get_binary_data() );
+
+					$image_url = $filename;
+				}
+
+				break;
+			}
+
+			if ( $part instanceof File_Data_Part ) {
+				$image_url = $part->get_file_uri(); // Actual URL. May have limited TTL (often 1 hour).
+				// TODO: Save as file or so.
+				break;
+			}
+		}
+
+		// See https://github.com/felixarntz/ai-services/blob/main/docs/Accessing-AI-Services-in-PHP.md for further processing.
+
+		WP_CLI::log( "Generated image: $image_url" );
+
+		return $image_url;
+	}
+
 	public function call_ai_service_with_prompt( string $prompt ) {
 		$parts = new Parts();
 		$parts->add_text_part( $prompt );
