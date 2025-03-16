@@ -40,6 +40,17 @@ To install the latest development version of this package, use the following com
 wp package install swissspidy/ai-command:dev-main
 ```
 
+## Connections
+
+Create a `ai-command.json` file in  your project root with the following information:
+
+```
+{
+    "npx_path": "/usr/local/bin/npx",
+    "filesystem_path": "/path/to/readable/writeable/directory"
+}
+```
+
 ## Contributing
 
 We appreciate you taking the initiative to contribute to this project.
@@ -65,3 +76,5 @@ Once you've decided to commit the time to seeing your pull request through, [ple
 ## Support
 
 GitHub issues aren't for general support questions, but there are other venues you can try: https://wp-cli.org/#support
+
+

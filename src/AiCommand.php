@@ -9,12 +9,12 @@ use Felix_Arntz\AI_Services\Services\API\Types\Parts;
 use Felix_Arntz\AI_Services\Services\API\Types\Parts\Function_Call_Part;
 use Felix_Arntz\AI_Services\Services\API\Types\Parts\Text_Part;
 use Felix_Arntz\AI_Services\Services\API\Types\Tools;
+use Mcp\Client\Client;
 use Mcp\Client\ClientSession;
 use Mcp\Client\Transport\StdioServerParameters;
 use Mcp\Types\Tool;
 use WP_CLI;
 use WP_CLI_Command;
-use Mcp\Client\Client;
 
 /**
  *
@@ -68,7 +68,33 @@ class AiCommand extends WP_CLI_Command {
 		return $this->call_ai_service( [ $content ] );
 	}
 
+	private function get_config($key, $default = null) {
+		static $config = null;
+
+		if ($config === null) {
+			$config_file = getcwd() . '/ai-command.json';
+			if (file_exists($config_file)) {
+				$json_content = file_get_contents($config_file);
+				$config = json_decode($json_content, true);
+				if (json_last_error() !== JSON_ERROR_NONE) {
+					WP_CLI::warning('Invalid ai-command.json file');
+					$config = [];
+				}
+			} else {
+				$config = [];
+			}
+		}
+		return $config[$key] ?? $default;
+	}
+
 	public function get_servers() {
+		$npx_path = $this->get_config('npx_path');
+		$filesystem_path = $this->get_config('filesystem_path');
+
+		if (empty($npx_path) || empty($filesystem_path)) {
+			WP_CLI::error('Missing required paths. Please ensure "npx_path" and "filesystem_path" are configured in ai-command.json.');
+		}
+
 		return [
 			[
 				'php',
@@ -76,8 +102,8 @@ class AiCommand extends WP_CLI_Command {
 				null,
 			],
 			[
-				'/opt/homebrew/bin/npx',
-				[ '-y', '@modelcontextprotocol/server-filesystem', '/Users/pascalb/Desktop/' ],
+				$npx_path,
+				[ '-y', '@modelcontextprotocol/server-filesystem', $filesystem_path ],
 			],
 		];
 	}
