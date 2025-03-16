@@ -68,44 +68,10 @@ class AiCommand extends WP_CLI_Command {
 		return $this->call_ai_service( [ $content ] );
 	}
 
-	private function get_config($key, $default = null) {
-		static $config = null;
-
-		if ($config === null) {
-			$config_file = getcwd() . '/ai-command.json';
-			if (file_exists($config_file)) {
-				$json_content = file_get_contents($config_file);
-				$config = json_decode($json_content, true);
-				if (json_last_error() !== JSON_ERROR_NONE) {
-					WP_CLI::warning('Invalid ai-command.json file');
-					$config = [];
-				}
-			} else {
-				$config = [];
-			}
-		}
-		return $config[$key] ?? $default;
-	}
-
 	public function get_servers() {
-		$npx_path = $this->get_config('npx_path');
-		$filesystem_path = $this->get_config('filesystem_path');
-
-		if (empty($npx_path) || empty($filesystem_path)) {
-			WP_CLI::error('Missing required paths. Please ensure "npx_path" and "filesystem_path" are configured in ai-command.json.');
-		}
-
-		return [
-			[
-				'php',
-				[ __DIR__ . '/wp_server.php' ],
-				null,
-			],
-			[
-				$npx_path,
-				[ '-y', '@modelcontextprotocol/server-filesystem', $filesystem_path ],
-			],
-		];
+		$config_file = __DIR__ . '/../ai-command.json';
+		$json_content = file_get_contents( realpath( $config_file ));
+		return json_decode( $json_content, true );
 	}
 
 	/**

@@ -17,6 +17,14 @@ use Mcp\Types\Tool;
 use Mcp\Types\ToolInputProperties;
 use Mcp\Types\ToolInputSchema;
 
+// Load WordPress.
+if ( isset( $argv[1] ) ) {
+    $wp_path = $argv[1];
+    if ( file_exists( $wp_path . '/wp-config.php' ) ) {
+        require_once $wp_path . '/wp-config.php';
+    }
+}
+
 // Create a server instance
 $server = new Server('wp-server');
 
