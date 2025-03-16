@@ -9,6 +9,7 @@ use Felix_Arntz\AI_Services\Services\API\Types\Parts;
 use Felix_Arntz\AI_Services\Services\API\Types\Parts\Function_Call_Part;
 use Felix_Arntz\AI_Services\Services\API\Types\Parts\Text_Part;
 use Felix_Arntz\AI_Services\Services\API\Types\Tools;
+use Mcp\Client\ClientSession;
 use Mcp\Client\Transport\StdioServerParameters;
 use Mcp\Types\Tool;
 use WP_CLI;
@@ -67,17 +68,38 @@ class AiCommand extends WP_CLI_Command {
 		return $this->call_ai_service( [ $content ] );
 	}
 
-	public function get_session() {
+	public function get_servers() {
+		return [
+			[
+				'php',
+				[ __DIR__ . '/wp_server.php' ],
+				null,
+			],
+			[
+				'/opt/homebrew/bin/npx',
+				[ '-y', '@modelcontextprotocol/server-filesystem', '/Users/pascalb/Desktop/' ],
+			],
+		];
+	}
+
+	/**
+	 * @return ClientSession[]
+	 */
+	public function get_sessions(): array {
+		$sessions = [];
+		foreach ( $this->get_servers() as $server ) {
+			$sessions[] = $this->get_session( $server );
+		}
+
+		return $sessions;
+	}
+
+	public function get_session( $server ) {
 		$serverParams = new StdioServerParameters(
-			command: 'php',
-			args: [ __DIR__ . '/wp_server.php' ],
-			env: null
+			...$server
 		);
 
-		$client = new Client();
-
-		// Connect to the server using stdio transport
-		return $client->connect(
+		return ( new Client() )->connect(
 			commandOrUrl: $serverParams->getCommand(),
 			args: $serverParams->getArgs(),
 			env: $serverParams->getEnv()
@@ -93,20 +115,43 @@ class AiCommand extends WP_CLI_Command {
 			}
 		);
 
-		$session   = $this->get_session();
-		$mcp_tools = $session->listTools();
-
 		$function_declarations = [];
 
-		/**
-		 * @var Tool $mcp_tool
-		 */
-		foreach ( $mcp_tools->tools as $mcp_tool ) {
-			$function_declarations[] = [
-				'name'        => $mcp_tool->name,
-				'description' => $mcp_tool->description,
-				'parameters'  => json_decode( json_encode( $mcp_tool->inputSchema->jsonSerialize() ), true ),
-			];
+		$sessions = $this->get_sessions();
+
+		foreach ( $sessions as $session ) {
+			/**
+			 * @var Tool $mcp_tool
+			 */
+			foreach ( $session->listTools()->tools as $mcp_tool ) {
+				$parameters = json_decode( json_encode( $mcp_tool->inputSchema->jsonSerialize() ), true );
+				unset( $parameters['additionalProperties'], $parameters['$schema'] );
+
+				// Not having any properties doesn't seem to work.
+				if ( empty( $parameters['properties'] ) ) {
+					$parameters['properties'] = [
+						'dummy' => [
+							'type' => 'string',
+						],
+					];
+
+				}
+				foreach ( $parameters['properties'] as $key => $value ) {
+					if ( $value['type'] === 'array' ) {
+						//                      unset( $parameters['properties'][ $key ]['items'] );
+					}
+				}
+
+				if ( $mcp_tool->name === 'edit_file' || $mcp_tool->name === 'search_files' ) {
+					continue;
+				}
+
+				$function_declarations[] = [
+					'name'        => $mcp_tool->name,
+					'description' => $mcp_tool->description,
+					'parameters'  => $parameters,
+				];
+			}
 		}
 
 		$new_contents = $contents;
@@ -156,12 +201,23 @@ class AiCommand extends WP_CLI_Command {
 					}
 					$text .= $part->get_text();
 				} elseif ( $part instanceof Function_Call_Part ) {
-					$result = $session->callTool( $part->get_name(), $part->get_args() );
-
-					$function_result = json_decode( json_encode( $result->content[0] ), true );
 					$function_result = [
-						'result' => $function_result['text'],
+						'error' => 'unknown tool',
 					];
+
+					// Find the right tool from the right server.
+					foreach ( $sessions as $session ) {
+						foreach ( $session->listTools()->tools as $mcp_tool ) {
+							if ( $part->get_name() === $mcp_tool->name ) {
+								$result          = $session->callTool( $part->get_name(), $part->get_args() );
+								$function_result = json_decode( json_encode( $result->content[0] ), true );
+								$function_result = [
+									'result' => $function_result['text'],
+								];
+								break 2;
+							}
+						}
+					}
 
 					$function_name = $part->get_name();
 					echo "Output generated with the '$function_name' tool:\n";
