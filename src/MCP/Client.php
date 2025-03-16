@@ -139,11 +139,7 @@ class Client {
 
 		try {
 			$service    = ai_services()->get_available_service(
-				[
-					'capabilities' => [
-						AI_Capability::MULTIMODAL_INPUT,
-					],
-				]
+				'google'
 			);
 
 			$parts = new Parts();
@@ -176,17 +172,19 @@ class Client {
 
 			$parts->add_text_part($prompt);
 
+			$model = 'gemini-2.0-flash-exp-image-generation';
+
+			\WP_CLI\AiCommand\tome_custom_log($service->list_models());
 
 			$candidates = $service
 				->get_model(
 					[
 						'feature'      => 'image-generation',
-
+						'model' 				=> $model
 					]
 				)
-				->generate_image( "$prompt image blob $image_blob" );
+				->send_generate_image_request( $content );
 
-				$model = 'gemini-2.0-flash';
 
 		} catch ( Exception $e ) {
 			WP_CLI::error( $e->getMessage() );
