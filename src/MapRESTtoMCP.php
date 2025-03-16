@@ -2,8 +2,10 @@
 
 namespace WP_CLI\AiCommand;
 
+use Mcp\Types\CallToolResult;
+use Mcp\Types\TextContent;
+use WP_CLI\AiCommand\Entity\Tool;
 use WP_CLI;
-use WP_CLI\AiCommand\MCP\Server;
 use WP_REST_Request;
 
 
@@ -74,9 +76,10 @@ class MapRESTtoMCP {
 		return 'string';
 	}
 
-	public function map_rest_to_mcp( Server $mcp_server ) {
+	public function map_rest_to_mcp(): array {
 		$server = rest_get_server();
 		$routes = $server->get_routes();
+		$tools  = [];
 
 		foreach ( $routes as $route => $endpoints ) {
 			foreach ( $endpoints as $endpoint ) {
@@ -96,14 +99,22 @@ class MapRESTtoMCP {
 						'description' => $this->generate_description( $information ),
 						'inputSchema' => $this->args_to_schema( $endpoint['args'] ),
 						'callable'    => function ( $inputs ) use ( $route, $method_name, $server ) {
-							return $this->rest_callable( $inputs, $route, $method_name, $server );
+							return new CallToolResult(
+								[
+									new TextContent(
+										json_encode( $this->rest_callable( $inputs, $route, $method_name, $server ) ),
+									),
+								]
+							);
 						},
 					];
 
-					$mcp_server->register_tool( $tool );
+					$tools[] = $tool;
 				}
 			}
 		}
+
+		return $tools;
 	}
 
 	/**
@@ -150,12 +161,19 @@ class MapRESTtoMCP {
 		$request = new WP_REST_Request( $method_name, $route );
 		$request->set_body_params( $inputs );
 
-		/**
-		 * @var WP_REST_Response $response
-		 */
 		$response = $server->dispatch( $request );
 
 		$data = $server->response_to_data( $response, false );
+
+		$titles = [];
+
+		// For GET POSTS just return titles because otherwise it is too much.
+		// TODO: REVISIT
+		foreach ( $data as $item ) {
+			$titles[] = $item['title']['rendered'];
+		}
+
+		return $titles;
 
 		if ( isset( $data[0]['slug'] ) ) {
 			$debug_data = 'Result List: ';

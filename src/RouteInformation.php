@@ -29,7 +29,7 @@ class RouteInformation {
 			$route = preg_replace( '/(\(\?P<' . $match . '>.*\))/', 'p_' . $match, $route, 1 );
 		}
 
-		return $this->method . '_' . sanitize_title( $route );
+		return str_replace( '-', '_', $this->method . '_' . sanitize_title( $route ) );
 	}
 
 	public function get_method(): string {
