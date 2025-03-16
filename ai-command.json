@@ -1,0 +1,17 @@
+[
+  [
+    "php",
+    [
+      "/Users/pascalb/Workspace/WordPress/ai-command/src/wp_server.php",
+      "/Users/pascalb/Local\\\\ Sites/ai-experiments/app/public"
+    ]
+  ],
+  [
+    "/opt/homebrew/bin/npx",
+    [
+      "-y",
+      "@modelcontextprotocol/server-filesystem",
+      "/Users/pascalb/Desktop/"
+    ]
+  ]
+]
