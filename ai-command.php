@@ -8,6 +8,7 @@ use WP_CLI\AiCommand\Tools\MiscTools;
 use WP_CLI\AiCommand\Tools\URLTools;
 use WP_CLI\AiCommand\Tools\CommunityEvents;
 use WP_CLI\AiCommand\Tools\MapRESTtoMCP;
+use WP_CLI\AiCommand\Tools\MapCLItoMCP;
 use WP_CLI;
 
 if ( ! class_exists( '\WP_CLI' ) ) {
@@ -34,9 +35,11 @@ WP_CLI::add_command( 'ai', static function ( $args, $assoc_args ) {
 		...(new MiscTools($server))->get_tools(),
 		...(new URLTools($server))->get_tools(),
 		...(new MapRESTtoMCP())->map_rest_to_mcp(),
+		...(new MapCLItoMCP())->map_cli_to_mcp(),
+
 	];
 
-	foreach ($all_tools as $tool) {
+		foreach ($all_tools as $tool) {
 		$tools->add($tool);
 	}
 

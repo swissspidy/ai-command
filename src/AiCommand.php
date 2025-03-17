@@ -81,24 +81,28 @@ class AiCommand extends WP_CLI_Command {
 	}
 
 	// Register resources for AI access
-	private function register_resources($server) {
+	private function register_resources( $server ) {
 		// Register Users resource
-		$server->register_resource([
+		$server->register_resource(
+			[
 				'name'        => 'users',
 				'uri'         => 'data://users',
 				'description' => 'List of users',
 				'mimeType'    => 'application/json',
 				'dataKey'     => 'users', // Data will be fetched from 'users'
-		]);
+			]
+		);
 
 		// Register Product Catalog resource
-		$server->register_resource([
+		$server->register_resource(
+			[
 				'name'        => 'product_catalog',
 				'uri'         => 'file://./products.json',
 				'description' => 'Product catalog',
 				'mimeType'    => 'application/json',
 				'filePath'    => './products.json', // Data will be fetched from products.json
-		]);
+			]
+		);
 	}
 
 	protected function register_media_resources( $server ) {
